@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:soundpool/soundpool.dart';
+import 'package:tetris/material/android/low_latency_audio.dart';
 
 class Sound extends StatefulWidget {
   final Widget child;
@@ -10,10 +12,16 @@ class Sound extends StatefulWidget {
   const Sound({Key key, this.child}) : super(key: key);
 
   @override
-  SoundState createState() => SoundState();
+  SoundState createState() {
+    if (Platform.isAndroid) {
+      return _AndroidSoundState();
+    } else {
+      return _SoundState();
+    }
+  }
 
   static SoundState of(BuildContext context) {
-    final state = context.ancestorStateOfType(const TypeMatcher<SoundState>());
+    final state = context.findAncestorStateOfType<SoundState>();
     assert(state != null, 'can not find Sound widget');
     return state;
   }
@@ -28,12 +36,80 @@ const _SOUNDS = [
   'start.mp3'
 ];
 
-class SoundState extends State<Sound> {
+abstract class SoundState extends State<Sound> {
+  bool mute = false;
+
+  void start();
+
+  void clear();
+
+  void fall();
+
+  void rotate();
+
+  void move();
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+
+class _AndroidSoundState extends SoundState {
+  Map<String, AudioPlayer> players = {};
+
+  @override
+  void initState() {
+    super.initState();
+    for (var value in _SOUNDS) {
+      scheduleMicrotask(() async {
+        final player = AudioPlayer();
+        player.load('flutter_assets/assets/audios/$value');
+        players[value] = player;
+      });
+    }
+  }
+
+  void _play(String name) {
+    final player = players[name];
+    players.forEach((key, value) {
+      value.pause();
+    });
+    if (player != null && !mute) {
+      player.play();
+    }
+  }
+
+  @override
+  void start() {
+    _play('start.mp3');
+  }
+
+  @override
+  void clear() {
+    _play('clean.mp3');
+  }
+
+  @override
+  void fall() {
+    _play('drop.mp3');
+  }
+
+  @override
+  void rotate() {
+    _play('rotate.mp3');
+  }
+
+  @override
+  void move() {
+    _play('move.mp3');
+  }
+}
+
+class _SoundState extends SoundState {
   Soundpool _pool;
 
   Map<String, int> _soundIds;
-
-  bool mute = false;
 
   void _play(String name) {
     final soundId = _soundIds[name];
@@ -62,26 +138,26 @@ class SoundState extends State<Sound> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return widget.child;
-  }
-
   void start() {
     _play('start.mp3');
   }
 
+  @override
   void clear() {
     _play('clean.mp3');
   }
 
+  @override
   void fall() {
     _play('drop.mp3');
   }
 
+  @override
   void rotate() {
     _play('rotate.mp3');
   }
 
+  @override
   void move() {
     _play('move.mp3');
   }
